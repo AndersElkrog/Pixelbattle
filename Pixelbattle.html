@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<title>To figurer – fuld kontrol</title>
+
+<style>
+body{
+  background:#111;
+  color:white;
+  font-family:system-ui,-apple-system,sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+/* -------- CONTROL PANEL -------- */
+
+.controls{
+  margin:20px 0;
+  padding:16px 20px;
+  background:#1b1b1b;
+  border-radius:14px;
+  box-shadow:0 8px 25px rgba(0,0,0,0.5);
+  width:950px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:25px;
+}
+
+.control-block{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.vertical-block{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.row-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.value-display{
+  min-width:32px;
+  text-align:center;
+}
+
+.label{
+  width:90px;        /* justér hvis du vil have mere/mindre luft */
+  text-align:left;
+  display:inline-block;
+}
+
+/* markers */
+
+.marker{
+  width:18px;
+  height:18px;
+  border-radius:50%;
+}
+
+.marker.white{ background:white; }
+.marker.black{ background:black; }
+
+/* buttons */
+
+button{
+  background:#2b2b2b;
+  color:white;
+  border:none;
+  border-radius:6px;
+  font-size:14px;
+  cursor:pointer;
+  transition:0.15s;
+  padding:6px 14px;
+}
+
+button:hover{
+  background:#444;
+}
+
+.square-btn{
+  width:36px;
+  height:36px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  font-size:16px;
+}
+
+.arrow-pad{
+  display:grid;
+  grid-template-columns:36px 36px 36px;
+  grid-template-rows:36px 36px 36px;
+  gap:4px;
+}
+
+/* board */
+
+.board{
+  display:grid;
+  position:relative;
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:0 0 25px rgba(0,0,0,0.7);
+}
+
+.cell{width:40px;height:40px;}
+.red{background:#c0392b;}
+.blue{background:#2980b9;}
+
+.piece{
+  position:absolute;
+  width:40px;
+  height:40px;
+  border-radius:8px;
+  pointer-events:none;
+}
+
+.redPiece{background:white;}
+.bluePiece{background:black;}
+</style>
+</head>
+<body>
+
+<div class="controls">
+
+  <!-- 🔴 CONTROL -->
+  <div class="control-block">
+    <div class="marker white"></div>
+    <div class="arrow-pad">
+      <div></div>
+      <button class="square-btn" onclick="moveSetup(redPiece,0,-1)">▲</button>
+      <div></div>
+      <button class="square-btn" onclick="moveSetup(redPiece,-1,0)">◀</button>
+      <div></div>
+      <button class="square-btn" onclick="moveSetup(redPiece,1,0)">▶</button>
+      <div></div>
+      <button class="square-btn" onclick="moveSetup(redPiece,0,1)">▼</button>
+      <div></div>
+    </div>
+  </div>
+
+  <!-- 🔵 CONTROL -->
+  <div class="control-block">
+    <div class="marker black"></div>
+    <div class="arrow-pad">
+      <div></div>
+      <button class="square-btn" onclick="moveSetup(bluePiece,0,-1)">▲</button>
+      <div></div>
+      <button class="square-btn" onclick="moveSetup(bluePiece,-1,0)">◀</button>
+      <div></div>
+      <button class="square-btn" onclick="moveSetup(bluePiece,1,0)">▶</button>
+      <div></div>
+      <button class="square-btn" onclick="moveSetup(bluePiece,0,1)">▼</button>
+      <div></div>
+    </div>
+  </div>
+
+  <!-- GAME CONTROL (LODRET) -->
+  <div class="vertical-block">
+    <button onclick="start()">Start</button>
+    <button onclick="pause()">Pause</button>
+    <button onclick="resetGame()">Reset</button>
+  </div>
+
+  <!-- SIZE + SPEED (LODRET) -->
+  <div class="vertical-block">
+
+    <div class="row-line">
+      <span class="label">Bredde:</span>
+      <button class="square-btn" onclick="changeWidth(-1)">−</button>
+      <span class="value-display" id="widthDisplay"></span>
+      <button class="square-btn" onclick="changeWidth(1)">+</button>
+    </div>
+
+    <div class="row-line">
+      <span class="label">Højde:</span>
+      <button class="square-btn" onclick="changeHeight(-1)">−</button>
+      <span class="value-display" id="heightDisplay"></span>
+      <button class="square-btn" onclick="changeHeight(1)">+</button>
+    </div>
+
+    <div class="row-line">
+      <span class="label">Hastighed:</span>
+      <button class="square-btn" onclick="slower()">−</button>
+      <span class="value-display" id="speedDisplay"></span>
+      <button class="square-btn" onclick="faster()">+</button>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="board" id="board"></div>
+
+<script>
+
+/* === HER ER DIN ORIGINAL FUNKTIONELLE JS UÆNDRET === */
+
+let width = 12;
+let height = 13;
+let board = [];
+let interval = null;
+let cellSize = 40;
+let speed = 80;
+let running = false;
+
+let redPiece, bluePiece;
+
+const boardEl = document.getElementById("board");
+const speedDisplay = document.getElementById("speedDisplay");
+const widthDisplay = document.getElementById("widthDisplay");
+const heightDisplay = document.getElementById("heightDisplay");
+
+function updateDisplays(){
+  speedDisplay.textContent = 11-speed/20;
+  widthDisplay.textContent = width;
+  heightDisplay.textContent = height;
+}
+
+function changeWidth(delta){
+  if(running) return;
+  width = Math.max(4, width + delta);
+  resetGame();
+}
+
+function changeHeight(delta){
+  if(running) return;
+  height = Math.max(4, height + delta);
+  resetGame();
+}
+
+function restartInterval(){
+  if(interval) clearInterval(interval);
+  interval = setInterval(step, speed);
+  updatePieceTransition();
+  updateDisplays();
+}
+
+function faster(){
+  speed = Math.max(20, speed - 20);
+  if(running) restartInterval();
+  updateDisplays();
+}
+
+function slower(){
+  speed = Math.min(200, speed + 20);
+  if(running) restartInterval();
+  updateDisplays();
+}
+
+function buildBoard(){
+  board=[];
+  boardEl.innerHTML="";
+  boardEl.style.gridTemplateColumns=`repeat(${width}, ${cellSize}px)`;
+  boardEl.style.gridTemplateRows=`repeat(${height}, ${cellSize}px)`;
+  boardEl.style.width=width*cellSize+"px";
+  boardEl.style.height=height*cellSize+"px";
+
+  for (let y=0;y<height;y++){
+    board[y]=[];
+    for (let x=0;x<width;x++){
+      const cell=document.createElement("div");
+      cell.classList.add("cell");
+      if (x < width/2){
+        cell.classList.add("red");
+        board[y][x]="red";
+      } else {
+        cell.classList.add("blue");
+        board[y][x]="blue";
+      }
+      boardEl.appendChild(cell);
+    }
+  }
+}
+
+function resetGame(){
+  running=false;
+  if(interval) clearInterval(interval);
+
+  redPiece  = { x:1, y:height-2, dx:1,  dy:1  };
+  bluePiece = { x:width-2, y:height-2, dx:-1, dy:-1 };
+
+  buildBoard();
+  createPieces();
+  updateDisplays();
+}
+
+function pause(){
+  running=false;
+  if(interval) clearInterval(interval);
+}
+
+function start(){
+  if(running) return;
+  running=true;
+  restartInterval();
+}
+
+function createPieces(){
+  const r=document.createElement("div");
+  r.className="piece redPiece";
+  r.id="redPiece";
+  boardEl.appendChild(r);
+
+  const b=document.createElement("div");
+  b.className="piece bluePiece";
+  b.id="bluePiece";
+  boardEl.appendChild(b);
+
+  updatePieceTransition();
+  draw();
+}
+
+function updatePieceTransition(){
+  document.querySelectorAll(".piece").forEach(p=>{
+    p.style.transition=`all ${speed*0.8}ms linear`;
+  });
+}
+
+function draw(){
+  document.getElementById("redPiece").style.left=redPiece.x*cellSize+"px";
+  document.getElementById("redPiece").style.top=redPiece.y*cellSize+"px";
+  document.getElementById("bluePiece").style.left=bluePiece.x*cellSize+"px";
+  document.getElementById("bluePiece").style.top=bluePiece.y*cellSize+"px";
+}
+
+function moveSetup(piece,dx,dy){
+  if(running) return;
+
+  let nx=piece.x+dx;
+  let ny=piece.y+dy;
+
+  if(nx<0||nx>=width||ny<0||ny>=height) return;
+  if(nx===redPiece.x&&ny===redPiece.y) return;
+  if(nx===bluePiece.x&&ny===bluePiece.y) return;
+
+  piece.x=nx;
+  piece.y=ny;
+  draw();
+}
+
+/* === BEVÆGELSESLOGIK URØRT === */
+
+function inBounds(x,y){
+  return x>=0 && x<width && y>=0 && y<height;
+}
+
+function setColor(x,y,color){
+  if (!inBounds(x,y)) return;
+  board[y][x] = color;
+  const index = y*width + x;
+  const cell = boardEl.children[index];
+  cell.classList.remove("red","blue");
+  cell.classList.add(color);
+}
+
+function movePiece(piece, ownColor, enemyColor, otherPiece){
+  let {x,y,dx,dy} = piece;
+
+  let Fx = {x:x+dx, y:y};
+  let Fy = {x:x, y:y+dy};
+  let F  = {x:x+dx, y:y+dy};
+
+  let cFx = inBounds(Fx.x,Fx.y) ? board[Fx.y][Fx.x] : enemyColor;
+  let cFy = inBounds(Fy.x,Fy.y) ? board[Fy.y][Fy.x] : enemyColor;
+  let cF  = inBounds(F.x,F.y)   ? board[F.y][F.x]   : enemyColor;
+
+  let newDx = dx;
+  let newDy = dy;
+
+  if (F.x === otherPiece.x && F.y === otherPiece.y){
+    newDx = -dx;
+    newDy = -dy;
+  }
+  else if (cFx===enemyColor && cFy===enemyColor){
+    if(inBounds(Fx.x,Fx.y)) setColor(Fx.x,Fx.y,ownColor);
+    if(inBounds(Fy.x,Fy.y)) setColor(Fy.x,Fy.y,ownColor);
+    newDx = -dx; newDy = -dy;
+  }
+  else if (cFx===enemyColor){
+    if(inBounds(Fx.x,Fx.y)) setColor(Fx.x,Fx.y,ownColor);
+    newDx = -dx;
+  }
+  else if (cFy===enemyColor){
+    if(inBounds(Fy.x,Fy.y)) setColor(Fy.x,Fy.y,ownColor);
+    newDy = -dy;
+  }
+  else if (cF===enemyColor){
+    if(inBounds(F.x,F.y)) setColor(F.x,F.y,ownColor);
+    newDx = -dx; newDy = -dy;
+  }
+
+  let testX = x + newDx;
+  let testY = y + newDy;
+
+  let testColor = inBounds(testX,testY)
+      ? board[testY][testX]
+      : enemyColor;
+
+  if (testColor === enemyColor){
+      if (inBounds(testX,testY)){
+          setColor(testX,testY,ownColor);
+      }
+      newDx = -dx;
+      newDy = -dy;
+  }
+
+  let nx = x + newDx;
+  let ny = y + newDy;
+
+  if (inBounds(nx,ny)){
+    piece.x = nx;
+    piece.y = ny;
+    piece.dx = newDx;
+    piece.dy = newDy;
+  }
+}
+
+function step(){
+  movePiece(redPiece,"red","blue",bluePiece);
+  movePiece(bluePiece,"blue","red",redPiece);
+  draw();
+}
+
+resetGame();
+updateDisplays();
+
+</script>
+</body>
+</html>
